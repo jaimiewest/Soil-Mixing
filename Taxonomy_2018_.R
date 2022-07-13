@@ -38,7 +38,7 @@ PhytoKeep
 PhytoKeep = PhytoKeep[c(1:11,13)]
 PhytoKeep
 
-#### Box plots, facet by PHYLA--SI FIGURE 5 ####
+#### Box plots, facet by PHYLA--SI FIGURE 4 ####
 df.plot = df.melt %>%
   group_by(Sample, Phylum, TimesMixed, VortexControl) %>% 
   dplyr::summarize(PhySum=sum(Abundance)) %>%
