@@ -117,17 +117,6 @@ pairwise.adonis <- function(x,factors, sim.function = 'vegdist', sim.method = 'b
 ## Run pairwise adonis function on distance variable, if there was a significant overall effect
 pairwise.adonis(DistVar,psData$TimesMixed)
 
-# It is thus recommended that the dispersion be evaluated and considered when interpreting the results of PERMANANOVA.
-# See Anderson (2006) for a discussion on tests of multivariate dispersion.
-
-# Thus, we should also look at the dispersion of our samples.
-beta = betadisper(DistVar, psData$TimesMixed)
-permutest(beta)
-
-# Ideally, the betadisper results will not be significant, otherwise the PERMANOVA results may be due to 
-# differences in group dispersions [http://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html]
-
-
 
 #### Bray-Curtis dissimilarities: mixed communities compared to 1X communities ####
 # Create function to expand.grid without duplicate pairs (such as a,b and b,a) or equals (i.e. a,a)
@@ -167,51 +156,28 @@ head(BC)
 # Bring in sample data, and order the plotting factors
 BC.plot = merge(data.frame(BC),data.frame(sample_data(ps)),by="SampleID")
 BC.plot$TimesMixed = ordered(BC.plot$TimesMixed, levels=c("Initial","1","2","4","8","16","32"))
-BC.plot$Group2 = ordered(BC.plot$Group2, levels=c("Initial","1X","U","V","W","X","Q","R","S","T","M","N","O","P","I","J","K","L","E","F","G","H","ZAgit2","ZAgit4","ZAgit8","ZAgit16","ZAgit32"))
 
-
-p.0 = ggplot(subset(BC.plot, TimesMixed!="Initial"),aes(x=TimesMixed,y=Dissimilarity,color=Group2))
-p.0 = p.0 + geom_jitter(alpha = 0.05) # adds scatter
-p.0 = p.0 + geom_boxplot(alpha = 0.7) + expand_limits(y=c(0.05,0.8)) + 
-  labs(x="Mixing frequency", 
-       y="Bray-Curtis Dissimilarities, compared to 1\U00D7", 
-       title=NULL)
-p.0 = p.0 + scale_x_discrete(labels=c("1"="1\U00D7 (control)", "2"="2\U00D7", "4"="4\U00D7", "8"="8\U00D7", "16"="16\U00D7", "32"="32\U00D7"))
-p.0 = p.0 + scale_color_manual(breaks = c("1X","U","Q","M","I","E","ZAgit2"),
-                               values = c("#440154FF", #1X
-                                          "#404788FF","#404788FF","#404788FF","#404788FF",#2X
-                                          "#2D708EFF","#2D708EFF","#2D708EFF","#2D708EFF",#4X 
-                                          "#20A387FF","#20A387FF","#20A387FF","#20A387FF",#8X 
-                                          "#73D055FF","#73D055FF","#73D055FF","#73D055FF",#16X 
-                                          "#FDE725FF","#FDE725FF","#FDE725FF","#FDE725FF",#32X 
-                                          "grey20","grey20","grey20","grey20","grey20"),#VortexControls
-                               name="", 
-                               labels=c("1\U00D7","2\U00D7","4\U00D7","8\U00D7","16\U00D7","32\U00D7","Vortex Control"))
-p.0 = p.0 + theme_bw()
+p.0 = ggplot(subset(BC.plot, TimesMixed != "Initial"),aes(x=TimesMixed,y=Dissimilarity,color=GroupOrAgit))
+p.0 = p.0 + geom_jitter(alpha = 0.025)
+p.0 = p.0 + geom_boxplot() + expand_limits(y=c(0.05,0.85)) +
+  labs(x="Mixing frequency", y="Dissimilarity, compared to 1\u00d7", title=NULL)
+p.0 = p.0 + scale_x_discrete(labels=c("1"="1\u00d7 (control)", "2"="2\u00d7", "4"="4\u00d7", "8"="8\u00d7", "16"="16\u00d7", "32"="32\u00d7"))
+p.0 = p.0 + scale_color_manual(values = c(
+  "#440154FF", #1X
+    "#404788FF",#2X
+    "#2D708EFF",#4X 
+    "#20A387FF",#8X 
+    "#73D055FF",#16X 
+    "#FDE725FF",#32X 
+    "grey20"),#VortexControls
+  name="", 
+  labels=c("1\u00d7 (control)","2\u00d7","4\u00d7","8\u00d7","16\u00d7","32\u00d7","Vortex control"))
+p.0 = p.0 + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(strip.background = element_rect(fill="white"))
 p.0 = p.0 + theme(legend.position = "none")
-p.0
+#p.0 = p.0 + theme(legend.position=c(.75,.78))
+p.0 #475x275
 
-# Statistics
-BC.plot.trt = subset(BC.plot, VortexControl=="N" & TimesMixed!="Initial" )
-ano = aov(Dissimilarity ~ TimesMixed, data = BC.plot.trt)
-summary(ano)
-par(mfrow=c(2,2))
-plot(ano)
-par(mfrow=c(1,1))
-
-Dunnett.trt = DunnettTest(BC.plot.trt$Dissimilarity, BC.plot.trt$TimesMixed)
-Dunnett.trt
-
-BC.plot.vort = subset(BC.plot, VortexControl=="Y" | TimesMixed=="1")
-anoVort = aov(Dissimilarity ~ TimesMixed, data = BC.plot.vort)
-summary(anoVort)
-par(mfrow=c(2,2))
-plot(anoVort)
-par(mfrow=c(1,1))
-
-Dunnett.vort = DunnettTest(BC.plot.vort$Dissimilarity, BC.plot.vort$TimesMixed)
-Dunnett.vort
-
+# Statistics for comparison vs 1X are above (PERMANOVA and pairwise adonis)
 
 #### Bray-Curtis dissimilarities, within mixing sets ####
 # You'll be using the same function, expand.grid.unique, created above.
@@ -253,7 +219,7 @@ BC.InSets2 = BC.InSets %>%
   dplyr::filter(sameset == "same" & samesample == "no")
 dim(BC.InSets2)
 
-# Calculate Bray-Curtis dissimilarities for your within-mixing set comparisons (this take >10 mins)
+# Calculate Bray-Curtis dissimilarities for your within-mixing set comparisons (this may take >10 mins)
 for (i in 1:nrow(BC.InSets2)){
   ps.BC = subset_samples(ps,SampleID == BC.InSets2$sample1[i] | SampleID ==BC.InSets2$sample2[i])
   ps.BC = prune_taxa(taxa_sums(ps.BC)>0,ps.BC)
@@ -266,46 +232,36 @@ head(BC.InSets2)
 BC.InSets2$SampleID = BC.InSets2$sample2
 BC.InSets.plot = merge(data.frame(BC.InSets2),data.frame(sample_data(ps)),by="SampleID")
 BC.InSets.plot$TimesMixed = ordered(BC.InSets.plot$TimesMixed, levels=c("Initial","1","2","4","8","16","32"))
-BC.InSets.plot$Group2 = ordered(BC.InSets.plot$Group2, levels=c("Initial","1X","U","V","W","X","Q","R","S","T","M","N","O","P","I","J","K","L","E","F","G","H","ZAgit2","ZAgit4","ZAgit8","ZAgit16","ZAgit32"))
 
 # Create plot
-p.3 = ggplot(subset(BC.InSets.plot, TimesMixed != "Initial"),aes(x=TimesMixed,y=Dissimilarity,color=Group2))
-p.3 = p.3 + geom_jitter(alpha = 0.1)
-p.3 = p.3 + geom_boxplot(alpha = 0.7) + expand_limits(y=c(0.05,0.8)) +
-  labs(x="Mixing frequency", y="Bray-Curtis Dissimilarities, within mixing set", title=NULL)
+p.3 = ggplot(subset(BC.InSets.plot, TimesMixed != "Initial"),aes(x=TimesMixed,y=Dissimilarity,color=GroupOrAgit))
+p.3 = p.3 + geom_jitter(alpha = 0.05)
+p.3 = p.3 + geom_boxplot() + expand_limits(y=c(0.05,0.85)) +
+  labs(x="Mixing frequency", y="Dissimilarity, within pooled mixing set", title=NULL)
 p.3 = p.3 + scale_x_discrete(labels=c("1"="1\u00d7 (control)", "2"="2\u00d7", "4"="4\u00d7", "8"="8\u00d7", "16"="16\u00d7", "32"="32\u00d7"))
-p.3 = p.3 + scale_color_manual(breaks = c("1X","U","Q","M","I","E","ZAgit2"),
-                               values = c("#440154FF", #1X
-                                          "#404788FF","#404788FF","#404788FF","#404788FF",#2X
-                                          "#2D708EFF","#2D708EFF","#2D708EFF","#2D708EFF",#4X 
-                                          "#20A387FF","#20A387FF","#20A387FF","#20A387FF",#8X 
-                                          "#73D055FF","#73D055FF","#73D055FF","#73D055FF",#16X 
-                                          "#FDE725FF","#FDE725FF","#FDE725FF","#FDE725FF",#32X 
-                                          "grey20","grey20","grey20","grey20","grey20"),#VortexControls
+p.3 = p.3 + scale_color_manual(values = c(
+                                 "#440154FF", #1X
+                                 "#404788FF",#2X
+                                 "#2D708EFF",#4X 
+                                 "#20A387FF",#8X 
+                                 "#73D055FF",#16X 
+                                 "#FDE725FF",#32X 
+                                 "grey20"),#VortexControls
                                name="", 
-                               labels=c("1\u00d7","2\u00d7","4\u00d7","8\u00d7","16\u00d7","32\u00d7","Vortex Control"))
-p.3 = p.3 + theme_bw()
-p.3 = p.3 + theme(legend.position=c(.75,.75))
-p.3
+                               labels=c("1\u00d7 (control)","2\u00d7","4\u00d7","8\u00d7","16\u00d7","32\u00d7","Vortex control"))
+p.3 = p.3 + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(strip.background = element_rect(fill="white"))
+p.3 = p.3 + theme(legend.position=c(.75,.75)) + theme(legend.text=element_text(size=8)) +
+  theme(legend.margin=margin(t=-0.5, r=0, b=0, l=0, unit="cm"))
+p.3 #475x275
 
-# Statistics
-dat = subset(BC.InSets.plot, VortexControl=="N" & TimesMixed!="Initial")
-ano.ingroup = aov(Dissimilarity ~ TimesMixed, data = dat)
-summary(ano.ingroup)
-par(mfrow=c(2,2))
-plot(ano.ingroup)
-par(mfrow=c(1,1))
-
-Dunnett.trt = DunnettTest(dat$Dissimilarity, dat$TimesMixed)
-Dunnett.trt
-
-dat.vort = subset(BC.InSets.plot, VortexControl=="Y" | TimesMixed=="1")
-anoVort.ingroup = aov(Dissimilarity ~ TimesMixed, data = dat.vort)
-summary(anoVort.ingroup)
-par(mfrow=c(2,2))
-plot(anoVort.ingroup)
-par(mfrow=c(1,1))
-
-Dunnett.vort = DunnettTest(dat.vort$Dissimilarity, dat.vort$TimesMixed)
-Dunnett.vort
+# Statistical comparison of disperson within each pooled mixing set
+# using betadisper, which is more robust than ANOVA of BC-Dis values
+# See Anderson (2006) for a discussion on tests of multivariate dispersion.
+# Run this separately for each treatment
+beta = betadisper(DistVar, psData$Group)
+anova(beta)
+test = permutest(beta, pairwise=TRUE, permutations=999)
+test
+Tukey=TukeyHSD(beta, conf.level = 0.95)
+Tukey
 
